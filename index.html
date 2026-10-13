@@ -1,0 +1,237 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Translation Tool</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f4ff;
+            margin: 0;
+            padding: 30px 15px;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px #0001;
+        }
+
+        h1 {
+            text-align: center;
+            color: #5146c8;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        select, textarea, button {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            margin-top: 8px;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        select, textarea {
+            border: 1px solid #ccc;
+        }
+
+        textarea {
+            height: 120px;
+            resize: vertical;
+        }
+
+        button {
+            border: none;
+            background: #5146c8;
+            color: white;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            background: #3930a0;
+        }
+
+        .secondary {
+            background: #e9e7ff;
+            color: #3930a0;
+        }
+
+        .secondary:hover {
+            background: #d8d4ff;
+        }
+
+        #status {
+            color: #555;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <h1>🌐 Language Translator</h1>
+
+    <label for="source">Source Language</label>
+    <select id="source">
+        <option value="auto">Detect Language</option>
+        <option value="en">English</option>
+        <option value="hi">Hindi</option>
+        <option value="mr">Marathi</option>
+        <option value="fr">French</option>
+        <option value="es">Spanish</option>
+        <option value="de">German</option>
+        <option value="ja">Japanese</option>
+        <option value="zh">Chinese</option>
+        <option value="ar">Arabic</option>
+    </select>
+
+    <label for="target">Target Language</label>
+    <select id="target">
+        <option value="hi">Hindi</option>
+        <option value="en">English</option>
+        <option value="mr">Marathi</option>
+        <option value="fr">French</option>
+        <option value="es">Spanish</option>
+        <option value="de">German</option>
+        <option value="ja">Japanese</option>
+        <option value="zh">Chinese</option>
+        <option value="ar">Arabic</option>
+    </select>
+
+    <label for="inputText">Enter Text</label>
+    <textarea id="inputText"
+        placeholder="Type the text you want to translate..."></textarea>
+
+    <button id="translateBtn" onclick="translateText()">
+        Translate
+    </button>
+
+    <p id="status" role="status" aria-live="polite"></p>
+
+    <label for="outputText">Translated Text</label>
+    <textarea id="outputText" readonly
+        placeholder="Your translation will appear here..."></textarea>
+
+    <button class="secondary" onclick="copyText()">
+        Copy Translation
+    </button>
+
+    <button class="secondary" onclick="speakText()">
+        🔊 Listen to Translation
+    </button>
+</div>
+
+<script>
+async function translateText() {
+    const text = document.getElementById("inputText").value.trim();
+    const source = document.getElementById("source").value;
+    const target = document.getElementById("target").value;
+    const output = document.getElementById("outputText");
+    const status = document.getElementById("status");
+    const button = document.getElementById("translateBtn");
+
+    if (!text) {
+        status.textContent = "Please enter text to translate.";
+        return;
+    }
+
+    if (source === target) {
+        output.value = text;
+        status.textContent = "Source and target languages are the same.";
+        return;
+    }
+
+    button.disabled = true;
+    status.textContent = "Translating...";
+    output.value = "";
+
+    try {
+        const params = new URLSearchParams({
+            q: text,
+            langpair: source + "|" + target
+        });
+
+        const response = await fetch(
+            "https://api.mymemory.translated.net/get?" + params
+        );
+
+        if (!response.ok) {
+            throw new Error("Translation service unavailable.");
+        }
+
+        const data = await response.json();
+
+        if (data.responseStatus !== 200) {
+            throw new Error(
+                data.responseDetails || "Translation failed."
+            );
+        }
+
+        output.value = data.responseData.translatedText;
+        status.textContent = "Translation completed successfully.";
+
+    } catch (error) {
+        status.textContent =
+            "Unable to translate. Check your internet connection and try again.";
+        console.error(error);
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function copyText() {
+    const text = document.getElementById("outputText").value;
+    const status = document.getElementById("status");
+
+    if (!text) {
+        status.textContent = "There is no translation to copy.";
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(text);
+        status.textContent = "Translation copied to clipboard.";
+    } catch (error) {
+        status.textContent =
+            "Copy failed. Please select and copy the text manually.";
+    }
+}
+
+function speakText() {
+    const text = document.getElementById("outputText").value;
+    const language = document.getElementById("target").value;
+
+    if (!text) {
+        document.getElementById("status").textContent =
+            "Translate some text first.";
+        return;
+    }
+
+    if (!("speechSynthesis" in window)) {
+        document.getElementById("status").textContent =
+            "Text-to-speech is not supported by this browser.";
+        return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang = language;
+    window.speechSynthesis.speak(speech);
+}
+</script>
+</body>
+</html>
